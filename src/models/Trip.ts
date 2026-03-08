@@ -1,64 +1,45 @@
 import mongoose, { Schema, Document } from "mongoose"
 
-export interface IMember {
-    userId: mongoose.Types.ObjectId
-    role: "owner" | "editor" | "viewer"
-}
-
 export interface ITrip extends Document {
     title: string
     startDate: Date
     endDate: Date
     owner: mongoose.Types.ObjectId
-    coverImage?: string
-    members: IMember[]
 }
-
-const memberSchema = new Schema<IMember>({
-    userId: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "User",
-        required: true,
-    },
-    role: {
-        type: String,
-        enum: ["owner", "editor", "viewer"],
-        default: "viewer",
-    },
-})
 
 const tripSchema = new Schema<ITrip>(
     {
         title: {
             type: String,
-            required: true,
+            required: [true, "Trip title is required"],
             trim: true,
+            maxlength: [100, "Title cannot exceed 100 characters"],
         },
         startDate: {
             type: Date,
-            required: true,
+            required: [true, "Start date is required"],
         },
         endDate: {
             type: Date,
-            required: true,
-            validate: {
-                validator: function (value: Date) {
-                    return value > (this as any).startDate
-                },
-                message: "endDate must be after startDate",
-            },
+            required: [true, "End date is required"],
         },
         owner: {
             type: mongoose.Schema.Types.ObjectId,
             ref: "User",
             required: true,
+            index: true,
         },
-        coverImage: {
-            type: String,          // ✅ was in interface but missing from schema entirely
-        },
-        members: [memberSchema],
     },
-    { timestamps: true }
-)
+    {
+        timestamps: true,
+        toJSON: { virtuals: true },
+        toObject: { virtuals: true },
+    }
 
+)
+tripSchema.virtual("members", {
+    ref: "TripMember",
+    localField: "_id",
+    foreignField: "tripId",
+})
 export default mongoose.model<ITrip>("Trip", tripSchema)
